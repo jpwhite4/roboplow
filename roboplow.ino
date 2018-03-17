@@ -51,7 +51,7 @@ static inline int ppmToSaber(unsigned long ppmVal)
   if (ppmVal > 2000 || ppmVal < 1000) {
     return 0;
   }
-  return (int(ppmVal) - 500) / 4; 
+  return (int(ppmVal) - 1500) / 4;
 }
 
 /*
