@@ -16,6 +16,10 @@ static const int PLOW_POSN_MOTOR_PIN2 = 7;
 static const int PLOW_HEIGHT_MOTOR_PIN1 = 8;
 static const int PLOW_HEIGHT_MOTOR_PIN2 = 9;
 
+static const int STATUS_LED = 13;
+
+static const unsigned long SIGNAL_TIMEOUT = 40; // milliseconds
+
 // PPM reader reads data from the RC receiver
 PPMReader ppm(FS_iA6B_PIN, MAX_CHANNEL);
 
@@ -29,6 +33,9 @@ void setup() {
   pinMode(PLOW_POSN_MOTOR_PIN2, OUTPUT);
   pinMode(PLOW_HEIGHT_MOTOR_PIN1, OUTPUT);
   pinMode(PLOW_HEIGHT_MOTOR_PIN2, OUTPUT);
+  pinMode(STATUS_LED, OUTPUT);
+
+  digitalWrite(STATUS_LED, LOW);
   
   SabertoothTXPinSerial.begin(9600);
   
@@ -76,12 +83,40 @@ static inline void ppmToL298N(unsigned long ppmVal, int in1, int in2)
   }
 }
 
-void loop() {
-  // Send the drive and turn data to the SaberTooth
-  ST.drive(ppmToSaber(ppm.latestValidChannelValue(DRIVE_CHANNEL, 0)));
-  ST.turn(ppmToSaber(ppm.latestValidChannelValue(TURN_CHANNEL, 0)));
+static void runMotors() {
+    // Send the drive and turn data to the SaberTooth
+    ST.drive(ppmToSaber(ppm.latestValidChannelValue(DRIVE_CHANNEL, 0)));
+    ST.turn(ppmToSaber(ppm.latestValidChannelValue(TURN_CHANNEL, 0)));
 
-  // Configure the motor controllers
-  ppmToL298N(ppm.latestValidChannelValue(PLOW_POSN_CHANNEL, 0), PLOW_POSN_MOTOR_PIN1, PLOW_POSN_MOTOR_PIN2);
-  ppmToL298N(ppm.latestValidChannelValue(PLOW_HEIGHT_CHANNEL, 0), PLOW_HEIGHT_MOTOR_PIN1, PLOW_HEIGHT_MOTOR_PIN2);
+    // Configure the motor controllers
+    ppmToL298N(ppm.latestValidChannelValue(PLOW_POSN_CHANNEL, 0), PLOW_POSN_MOTOR_PIN1, PLOW_POSN_MOTOR_PIN2);
+    ppmToL298N(ppm.latestValidChannelValue(PLOW_HEIGHT_CHANNEL, 0), PLOW_HEIGHT_MOTOR_PIN1, PLOW_HEIGHT_MOTOR_PIN2);
+}
+
+void loop() {
+    static unsigned long lastValid = 0;
+
+    unsigned long currentTime = millis();
+
+    if (0 == ppm.channelState(MAX_CHANNEL)) {
+        lastValid = currentTime;
+        runMotors();
+        byte ledState = (currentTime / 1024) & 1;
+        digitalWrite(STATUS_LED, ledState);
+        ppm.latestValidChannelValue(MAX_CHANNEL, 0);
+    }
+
+    unsigned long elapsed = currentTime - lastValid;
+
+    if (elapsed > SIGNAL_TIMEOUT) {
+        // Switch all motors off
+        ST.drive(0);
+        ST.turn(0);
+        ppmToL298N(1500, PLOW_POSN_MOTOR_PIN1, PLOW_POSN_MOTOR_PIN2);
+        ppmToL298N(1500, PLOW_HEIGHT_MOTOR_PIN1, PLOW_HEIGHT_MOTOR_PIN2);
+
+        // Flash STATUS LED
+        digitalWrite(STATUS_LED, (elapsed >> 8) & 1);
+    }
+    
 }
