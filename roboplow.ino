@@ -2,10 +2,10 @@
 #include <PPMReader.h>
 
 // Settings for the RC channels
-static const int PLOW_POSN_CHANNEL = 1;
-static const int PLOW_HEIGHT_CHANNEL = 2;
-static const int TURN_CHANNEL = 3;
-static const int DRIVE_CHANNEL = 4;
+static const int PLOW_POSN_CHANNEL = 4;
+static const int PLOW_HEIGHT_CHANNEL = 3;
+static const int TURN_CHANNEL = 1;
+static const int DRIVE_CHANNEL = 2;
 
 static const int MAX_CHANNEL = 6;
 
